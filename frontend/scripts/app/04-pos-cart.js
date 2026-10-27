@@ -1261,12 +1261,12 @@ function updateCartUI() {
 
 function renderCartTotals() {
   const totals = calculateTotals();
-  const totalDisplay = document.getElementById("total-amount-display");
+  const totalDisplay = document.getElementById("total-display") || document.getElementById("total-amount-display");
   const subtotalDisplay = document.getElementById("subtotal-display");
   const ivaDisplay = document.getElementById("iva-display");
-  const panel = document.getElementById("checkout-panel");
-  const standardCheckout = document.getElementById("standard-checkout-view");
-  const returnCheckout = document.getElementById("return-checkout-view");
+  const panel = document.getElementById("totals-panel") || document.getElementById("checkout-panel");
+  const standardCheckout = document.getElementById("standard-checkout-panel") || document.getElementById("standard-checkout-view");
+  const returnCheckout = document.getElementById("return-checkout-panel") || document.getElementById("return-checkout-view");
   const currencySymbol = document.getElementById("total-currency-symbol");
 
   if (totals.total < 0.0) {

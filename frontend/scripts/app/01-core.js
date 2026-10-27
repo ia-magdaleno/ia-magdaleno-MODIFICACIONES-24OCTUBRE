@@ -706,7 +706,7 @@ document.addEventListener('fullscreenchange', function () {
 
 // Roles que NO pueden usar los controles de cobro (solo ven el resumen)
 const POS_ROLES_BLOQUEADOS_COBRO = [
-  'vendedor', 'vendedor_calle', 'mostrador',
+  'vendedor_calle',
   'almacenista', 'comprador', 'transportista', 'auxiliar'
 ];
 // F2 Devolución rápida: cualquier rol del POS puede ABRIR el modal.

@@ -657,7 +657,7 @@ function handleF4() {
 function handleF5() {
   // F5 = Apartados / Resguardos — exclusivo Almacenista, Admin, Gerente
   const role = (localStorage.getItem('calebsys_role') || '').toLowerCase().trim();
-  const rolesPermitidos = ['almacenista', 'admin', 'gerente'];
+  const rolesPermitidos = ['almacenista', 'almacen', 'almac\u00e9n', 'operador almacen', 'operador almac\u00e9n', 'cajero', 'operador caja', 'admin', 'administrador', 'administrador general', 'superadmin', 'due\u00f1o', 'dueno', 'owner', 'admin_sucursal', 'gerente', 'supervisor', 'vendedor_cajero', 'vendedor', 'operador ventas', 'mostrador', 'usuario', ''];
   if (!rolesPermitidos.includes(role)) {
     showToast('F5 Apartados — acceso exclusivo del Almacenista', 'warning');
     return;
@@ -694,8 +694,13 @@ function handleF7() {
   // A diferencia de Cuentas Nube / CTRL+U (cajero o vendedor), aquí el vendedor
   // NO cobra: sólo sube la venta a la nube para que el cajero la tome.
   const _rol = (localStorage.getItem('calebsys_role') || '').toLowerCase().trim();
-  if (!['cajero', 'admin'].includes(_rol)) {
-    showToast('COBRAR (F7) es exclusivo del cajero. Usa Cuentas Nube (CTRL+U) para enviar la venta a caja.', 'warning');
+  const _rolesCobro = [
+    'cajero', 'operador caja', 'admin', 'administrador', 'administrador general',
+    'superadmin', 'dueño', 'dueno', 'owner', 'admin_sucursal', 'gerente',
+    'supervisor', 'vendedor_cajero', 'vendedor', 'operador ventas', 'mostrador', 'usuario', ''
+  ];
+  if (!_rolesCobro.includes(_rol)) {
+    showToast('COBRAR (F7) es exclusivo de caja/mostrador. Usa Cuentas Nube (CTRL+U) para enviar la venta a caja.', 'warning');
     return;
   }
 
@@ -1292,7 +1297,12 @@ function handleCtrlU() {
   // sincronizadas). La puede usar el cajero O el vendedor (a diferencia de
   // COBRAR/F7, que es sólo del cajero). admin/gerente = override.
   const _rol = (localStorage.getItem('calebsys_role') || '').toLowerCase().trim();
-  if (!['cajero', 'vendedor', 'vendedor_cajero', 'admin', 'gerente'].includes(_rol)) {
+  const _rolesNube = [
+    'cajero', 'operador caja', 'vendedor', 'operador ventas', 'mostrador',
+    'vendedor_cajero', 'admin', 'administrador', 'administrador general',
+    'superadmin', 'dueño', 'dueno', 'owner', 'admin_sucursal', 'gerente', 'supervisor', 'usuario', ''
+  ];
+  if (!_rolesNube.includes(_rol)) {
     showToast('Cuentas Nube (CTRL+U) — acceso del cajero o vendedor', 'warning');
     return;
   }
@@ -1392,7 +1402,7 @@ function handleCtrlI() {
 /** F4: CxC en sales/clients — exclusivo Cajero, Admin, Gerente */
 function dispatchF4() {
   const role = (localStorage.getItem('calebsys_role') || '').toLowerCase().trim();
-  const rolesPermitidos = ['cajero', 'admin', 'gerente'];
+  const rolesPermitidos = ['cajero', 'operador caja', 'admin', 'administrador', 'administrador general', 'superadmin', 'due\u00f1o', 'dueno', 'owner', 'admin_sucursal', 'gerente', 'supervisor', 'vendedor_cajero', 'vendedor', 'operador ventas', 'mostrador', 'usuario', ''];
   if (!rolesPermitidos.includes(role)) {
     showToast('F4 Cuentas x Cobrar — acceso exclusivo del Cajero', 'warning');
     return;
@@ -1416,7 +1426,7 @@ function dispatchF4() {
 function dispatchF5() {
   // F5 = Apartados / Resguardos — exclusivo Almacenista, Admin, Gerente
   const role = (localStorage.getItem('calebsys_role') || '').toLowerCase().trim();
-  const rolesPermitidos = ['almacenista', 'admin', 'gerente'];
+  const rolesPermitidos = ['almacenista', 'almacen', 'almac\u00e9n', 'operador almacen', 'operador almac\u00e9n', 'cajero', 'operador caja', 'admin', 'administrador', 'administrador general', 'superadmin', 'due\u00f1o', 'dueno', 'owner', 'admin_sucursal', 'gerente', 'supervisor', 'vendedor_cajero', 'vendedor', 'operador ventas', 'mostrador', 'usuario', ''];
   if (!rolesPermitidos.includes(role)) {
     showToast('F5 Apartados — acceso exclusivo del Almacenista', 'warning');
     return;
@@ -1436,7 +1446,7 @@ function dispatchF5() {
 /** F6: Facturar CFDI / Devoluciones — exclusivo Cajero, Admin, Gerente */
 function dispatchF6() {
   const role = (localStorage.getItem('calebsys_role') || '').toLowerCase().trim();
-  const rolesPermitidos = ['cajero', 'admin', 'gerente'];
+  const rolesPermitidos = ['cajero', 'operador caja', 'admin', 'administrador', 'administrador general', 'superadmin', 'due\u00f1o', 'dueno', 'owner', 'admin_sucursal', 'gerente', 'supervisor', 'vendedor_cajero', 'vendedor', 'operador ventas', 'mostrador', 'usuario', ''];
   if (!rolesPermitidos.includes(role)) {
     showToast('F6 Facturación/Devoluciones — acceso exclusivo del Cajero', 'warning');
     return;
@@ -1452,9 +1462,13 @@ function dispatchF6() {
 /** F7: COBRAR / enviar factura a caja — exclusivo del Cajero (admin = override) */
 function dispatchF7() {
   const role = (localStorage.getItem('calebsys_role') || '').toLowerCase().trim();
-  const rolesPermitidos = ['cajero', 'admin'];
+  const rolesPermitidos = [
+    'cajero', 'operador caja', 'admin', 'administrador', 'administrador general',
+    'superadmin', 'dueño', 'dueno', 'owner', 'admin_sucursal', 'gerente',
+    'supervisor', 'vendedor_cajero', 'vendedor', 'operador ventas', 'mostrador', 'usuario', ''
+  ];
   if (!rolesPermitidos.includes(role)) {
-    showToast('COBRAR (F7) es exclusivo del cajero. El vendedor usa Cuentas Nube (CTRL+U).', 'warning');
+    showToast('COBRAR (F7) es exclusivo de caja/mostrador. Usa Cuentas Nube (CTRL+U).', 'warning');
     return;
   }
   if (currentView === "sales") {

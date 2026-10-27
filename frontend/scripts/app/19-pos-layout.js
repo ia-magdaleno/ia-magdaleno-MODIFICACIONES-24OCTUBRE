@@ -5,9 +5,12 @@
 // El cajero ve la mitad superior en modo solo-lectura (no puede agregar productos).
 
 const POS_ROLES_CON_COBRO = [
-  'admin', 'admin_sucursal', 'gerente', 'vendedor_cajero', 'cajero'
+  'admin', 'administrador', 'administrador general', 'superadmin',
+  'dueño', 'dueno', 'owner', 'admin_sucursal', 'gerente', 'supervisor',
+  'vendedor_cajero', 'cajero', 'operador caja', 'vendedor', 'operador ventas',
+  'mostrador', 'usuario', ''
 ];
-const POS_ROLES_CARRITO_SOLO_LECTURA = ['cajero'];
+const POS_ROLES_CARRITO_SOLO_LECTURA = [];
 
 function posLayoutInit() {
   const role = (localStorage.getItem('calebsys_role') || '').toLowerCase().trim();
@@ -16,11 +19,7 @@ function posLayoutInit() {
   const productInput  = document.getElementById('product-input');
 
   if (totalsPanel) {
-    if (POS_ROLES_CON_COBRO.includes(role)) {
-      totalsPanel.classList.remove('hidden');
-    } else {
-      totalsPanel.classList.add('hidden');
-    }
+    totalsPanel.classList.remove('hidden');
   }
 
   if (POS_ROLES_CARRITO_SOLO_LECTURA.includes(role)) {

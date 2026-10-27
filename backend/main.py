@@ -98,11 +98,45 @@ if os.getenv("DEPLOYMENT_MODE", "local").strip().strip('"').strip("'").lower() !
 
 def _sqlite_ensure_all_model_columns() -> None:
     """Garantiza que todas las columnas definidas en models.Base existan en el
-    SQLite local (evita OperationalError: no such column en bases locales previas)."""
+    SQLite local, vincula ColumnDefault en Python para columnas con server_default
+    (evita IntegrityError NOT NULL cuando SQLite carece de DEFAULT en la tabla legacy)
+    y rellena NULLs existentes."""
     try:
+        from datetime import datetime as _dt, timezone as _tz
+        from decimal import Decimal as _Dec
+        from sqlalchemy.schema import ColumnDefault as _ColDefault
+        from sqlalchemy import Boolean as _SABool, Integer as _SAInt, Numeric as _SANum, Float as _SAFloat, DateTime as _SADt
+
+        for _tname, _table in models.Base.metadata.tables.items():
+            for _col in _table.columns:
+                if _col.default is None and _col.server_default is not None:
+                    _arg = _col.server_default.arg
+                    _ctype = _col.type
+                    if hasattr(_arg, "name") and str(getattr(_arg, "name", "")).lower() in ("now", "current_timestamp"):
+                        _py_def = _ColDefault(lambda: _dt.now(_tz.utc))
+                    elif isinstance(_ctype, _SABool):
+                        _s = str(_arg).strip("'\"").lower()
+                        _py_def = _ColDefault(_s in ("true", "1", "t", "yes"))
+                    elif isinstance(_ctype, _SAInt):
+                        try:
+                            _py_def = _ColDefault(int(str(_arg).strip("'\"")))
+                        except Exception:
+                            _py_def = _ColDefault(0)
+                    elif isinstance(_ctype, (_SANum, _SAFloat)):
+                        try:
+                            _py_def = _ColDefault(_Dec(str(_arg).strip("'\"")))
+                        except Exception:
+                            _py_def = _ColDefault(_Dec("0"))
+                    elif isinstance(_ctype, _SADt):
+                        _py_def = _ColDefault(lambda: _dt.now(_tz.utc))
+                    else:
+                        _py_def = _ColDefault(str(_arg).strip("'\""))
+                    _col.default = _py_def
+                    _py_def._set_parent_with_dispatch(_col)
+
         if engine_local.dialect.name != "sqlite":
             return
-        from sqlalchemy import inspect as _sa_inspect
+        from sqlalchemy import inspect as _sa_inspect, text as _sa_text
         insp = _sa_inspect(engine_local)
         existing_tables = set(insp.get_table_names())
         with engine_local.begin() as conn:
@@ -114,6 +148,30 @@ def _sqlite_ensure_all_model_columns() -> None:
                     if col.name not in existing_cols:
                         col_type = col.type.compile(dialect=engine_local.dialect)
                         conn.exec_driver_sql(f'ALTER TABLE "{tname}" ADD COLUMN "{col.name}" {col_type}')
+                    if col.server_default is not None:
+                        arg = col.server_default.arg
+                        ctype = col.type
+                        if hasattr(arg, "name") and str(getattr(arg, "name", "")).lower() in ("now", "current_timestamp"):
+                            val = _dt.now(_tz.utc).isoformat()
+                        elif isinstance(ctype, _SABool):
+                            s = str(arg).strip("'\"").lower()
+                            val = 1 if s in ("true", "1", "t", "yes") else 0
+                        elif isinstance(ctype, _SAInt):
+                            try:
+                                val = int(str(arg).strip("'\""))
+                            except Exception:
+                                val = 0
+                        elif isinstance(ctype, (_SANum, _SAFloat)):
+                            try:
+                                val = float(str(arg).strip("'\""))
+                            except Exception:
+                                val = 0.0
+                        else:
+                            val = str(arg).strip("'\"")
+                        conn.execute(
+                            _sa_text(f'UPDATE "{tname}" SET "{col.name}" = :v WHERE "{col.name}" IS NULL'),
+                            {"v": val},
+                        )
     except Exception as _e:
         import logging as _lg
         _lg.getLogger("calebsys").warning("[SQLite] ensure model cols: %s", _e)

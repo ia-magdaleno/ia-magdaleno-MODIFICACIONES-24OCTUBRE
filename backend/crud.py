@@ -1300,37 +1300,49 @@ def _process_sale_item(
         donor = _find_donor_warehouse_stock(
             db, empresa_id, product.id, warehouse.id, faltante_local
         )
-        if donor is None:
-            raise ValueError(
-                f"Stock insuficiente en una sola bodega para cubrir el "
-                f"faltante de SKU {item.product_sku} ({faltante_local} "
-                f"unidades) via traspaso automatico, aunque el total "
-                f"del tenant si alcanza. Requiere traspaso manual "
-                f"entre varias bodegas (fuera de alcance de este fix)."
+        if donor is not None:
+            donor.quantity = donor.quantity - faltante_local
+            local_stock.quantity = local_stock.quantity + faltante_local
+            db.add(donor)
+            donor_wh = _get_warehouse_by_id(db, empresa_id, donor.warehouse_id)
+            donor_suc = (donor_wh.sucursal_id if donor_wh else None) or "MATRIZ"
+            db.add(models.InventoryMovement(
+                empresa_id=empresa_id, sucursal_id=donor_suc,
+                product_id=product.id, warehouse_id=donor.warehouse_id,
+                movement_type="TRASPASO_SALIDA", quantity=faltante_local,
+                unit_cost=product.average_cost, reference_type="TICKET_VENTA",
+                reference_id=db_sale.id,
+                idempotency_key=f"SALE:{db_sale.id}:{db_item.id}:TRASPASO_SALIDA",
+                reason=f"Traspaso automático por venta #{folio_num} hacia {sale_branch}",
+            ))
+            db.add(models.InventoryMovement(
+                empresa_id=empresa_id, sucursal_id=sale_branch,
+                product_id=product.id, warehouse_id=warehouse.id,
+                movement_type="TRASPASO_ENTRADA", quantity=faltante_local,
+                unit_cost=product.average_cost, reference_type="TICKET_VENTA",
+                reference_id=db_sale.id,
+                idempotency_key=f"SALE:{db_sale.id}:{db_item.id}:TRASPASO_ENTRADA",
+                reason=f"Recepción automática por venta #{folio_num} desde {donor_suc}",
+            ))
+        else:
+            total_wh_qty = (
+                db.query(func.coalesce(func.sum(models.WarehouseStock.quantity), 0))
+                .filter(models.WarehouseStock.empresa_id == empresa_id)
+                .filter(models.WarehouseStock.product_id == product.id)
+                .scalar()
             )
-        donor.quantity = donor.quantity - faltante_local
-        local_stock.quantity = local_stock.quantity + faltante_local
-        db.add(donor)
-        donor_wh = _get_warehouse_by_id(db, empresa_id, donor.warehouse_id)
-        donor_suc = (donor_wh.sucursal_id if donor_wh else None) or "MATRIZ"
-        db.add(models.InventoryMovement(
-            empresa_id=empresa_id, sucursal_id=donor_suc,
-            product_id=product.id, warehouse_id=donor.warehouse_id,
-            movement_type="TRASPASO_SALIDA", quantity=faltante_local,
-            unit_cost=product.average_cost, reference_type="TICKET_VENTA",
-            reference_id=db_sale.id,
-            idempotency_key=f"SALE:{db_sale.id}:{db_item.id}:TRASPASO_SALIDA",
-            reason=f"Traspaso automático por venta #{folio_num} hacia {sale_branch}",
-        ))
-        db.add(models.InventoryMovement(
-            empresa_id=empresa_id, sucursal_id=sale_branch,
-            product_id=product.id, warehouse_id=warehouse.id,
-            movement_type="TRASPASO_ENTRADA", quantity=faltante_local,
-            unit_cost=product.average_cost, reference_type="TICKET_VENTA",
-            reference_id=db_sale.id,
-            idempotency_key=f"SALE:{db_sale.id}:{db_item.id}:TRASPASO_ENTRADA",
-            reason=f"Recepción automática por venta #{folio_num} desde {donor_suc}",
-        ))
+            total_wh_dec = Decimal(str(total_wh_qty or 0))
+            if stock_tot > total_wh_dec and (local_stock.quantity + (stock_tot - total_wh_dec)) >= sold:
+                local_stock.quantity = local_stock.quantity + (stock_tot - total_wh_dec)
+                db.add(local_stock)
+            else:
+                raise ValueError(
+                    f"Stock insuficiente en una sola bodega para cubrir el "
+                    f"faltante de SKU {item.product_sku} ({faltante_local} "
+                    f"unidades) via traspaso automatico, aunque el total "
+                    f"del tenant si alcanza. Requiere traspaso manual "
+                    f"entre varias bodegas (fuera de alcance de este fix)."
+                )
 
     local_stock.quantity = local_stock.quantity - sold
     db.add(local_stock)

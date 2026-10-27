@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 from typing import Any, List, Optional
 from datetime import datetime
 
@@ -146,6 +146,35 @@ class ClientBase(BaseModel):
     saldo_actual: float = 0.0
     # NR-03: escala de precio asignada al cliente
     assigned_price_scale: str = "Público General"
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_null_client_defaults(cls, data: Any) -> Any:
+        defaults = {
+            "client_type": "P\u00fablico General",
+            "saldo_favor": 0.0,
+            "limite_credito": 0.0,
+            "dias_credito": 30,
+            "puntos": 0,
+            "resguardos": False,
+            "apartados": 0.0,
+            "ultima_compra": "S/N",
+            "saldo_actual": 0.0,
+            "assigned_price_scale": "P\u00fablico General",
+        }
+        if isinstance(data, dict):
+            out = dict(data)
+            for k, dv in defaults.items():
+                if out.get(k) is None:
+                    out[k] = dv
+            return out
+        for k, dv in defaults.items():
+            if hasattr(data, k) and getattr(data, k) is None:
+                try:
+                    setattr(data, k, dv)
+                except Exception:
+                    pass
+        return data
 
 class ClientCreate(ClientBase):
     pass
